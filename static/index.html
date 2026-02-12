@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Codex & Claude History Viewer</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <div id="app">
+    <aside id="sidebar">
+      <div id="sidebarTop" class="sidebar-top">
+        <div class="brand">
+          <div class="brand-title">Codex &amp; Claude History Viewer</div>
+          <div class="tabs" role="tablist" aria-label="Source">
+            <button type="button" class="tab active" data-source="codex" role="tab" aria-selected="true">Codex</button>
+            <button type="button" class="tab" data-source="claude" role="tab" aria-selected="false">Claude Code</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="label">Browse</div>
+          <div class="tabs" role="tablist" aria-label="Browse mode">
+            <button type="button" class="tab active" data-view="sessions" role="tab" aria-selected="true">Sessions</button>
+            <button type="button" class="tab" data-view="projects" role="tab" aria-selected="false">Projects</button>
+          </div>
+          <div id="projectCrumb" class="muted"></div>
+          <button type="button" id="backToProjects" class="btn small" style="display:none">Back to projects</button>
+        </div>
+
+        <form id="searchForm" class="card">
+          <label class="label" for="q">Keyword</label>
+          <input id="q" type="text" placeholder="Search keyword" />
+
+          <div class="row">
+            <div class="field">
+              <label class="label" for="start">Start date</label>
+              <input id="start" type="text" placeholder="YYYY-MM-DD" inputmode="numeric" pattern="\\d{4}-\\d{2}-\\d{2}" />
+            </div>
+            <div class="field">
+              <label class="label" for="end">End date</label>
+              <input id="end" type="text" placeholder="YYYY-MM-DD" inputmode="numeric" pattern="\\d{4}-\\d{2}-\\d{2}" />
+            </div>
+          </div>
+        </form>
+
+        <div class="card">
+          <div class="label">Roles</div>
+          <div class="roles">
+            <label><input type="checkbox" data-role="user" checked /> user</label>
+            <label><input type="checkbox" data-role="assistant" checked /> assistant</label>
+            <label><input type="checkbox" data-role="system" checked /> system</label>
+            <label><input type="checkbox" data-role="developer" checked /> developer</label>
+            <label><input type="checkbox" data-role="tool" checked /> tool</label>
+            <label><input type="checkbox" data-role="other" checked /> other</label>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="label">Code theme</div>
+          <div class="tabs three" role="tablist" aria-label="Code theme">
+            <button type="button" class="tab active" data-code-theme="light" role="tab" aria-selected="true">Light</button>
+            <button type="button" class="tab" data-code-theme="dim" role="tab" aria-selected="false">Warm</button>
+            <button type="button" class="tab" data-code-theme="dark" role="tab" aria-selected="false">Dark</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="sidebarSessionsResizer" class="resizer horizontal" title="Resize panels" aria-label="Resize panels"></div>
+
+      <div class="results">
+        <div class="results-header">
+          <div class="results-title">
+            <div id="resultsLabel" class="label">Sessions</div>
+            <div id="resultCount" class="muted">0</div>
+          </div>
+          <div id="sessionSortWrap" class="session-sort-wrap">
+            <select id="sessionSort" class="session-sort" aria-label="Sort sessions" title="Sort sessions">
+              <option value="start">Start time</option>
+              <option value="last">Last activity</option>
+            </select>
+          </div>
+        </div>
+        <div id="sessionList" class="session-list"></div>
+      </div>
+    </aside>
+
+    <div id="sidebarResizer" class="resizer vertical" title="Resize sidebar" aria-label="Resize sidebar"></div>
+
+    <main id="main">
+      <div id="sessionHeader" class="session-header">
+        <div class="session-title">Select a session</div>
+        <div class="session-meta muted"></div>
+        <div class="session-info">
+          <div class="info-row">
+            <div class="info-label">Work dir</div>
+            <div id="workdirValue" class="info-value muted">-</div>
+            <button id="copyWorkdir" type="button" class="btn small">Copy</button>
+          </div>
+          <div class="info-row">
+            <div class="info-label">Resume ID</div>
+            <div id="resumeValue" class="info-value muted">-</div>
+            <button id="copyResumeId" type="button" class="btn small">Copy</button>
+          </div>
+          <div class="info-row">
+            <div class="info-label">Resume cmd</div>
+            <div id="resumeCmd" class="info-value code">-</div>
+            <button id="copyResumeCmd" type="button" class="btn small">Copy</button>
+          </div>
+        </div>
+        <div class="session-search">
+          <input id="sessionSearch" type="text" placeholder="Search in this session" />
+          <div id="sessionSearchCount" class="muted"></div>
+          <button id="prevMatch" type="button" class="btn small" title="Previous match" aria-label="Previous match">▲</button>
+          <button id="nextMatch" type="button" class="btn small" title="Next match" aria-label="Next match">▼</button>
+          <button id="clearSessionSearch" type="button" class="btn small">Clear</button>
+        </div>
+      </div>
+      <div id="headerResizer" class="resizer horizontal" title="Resize header" aria-label="Resize header"></div>
+      <div id="messages" class="messages"></div>
+    </main>
+  </div>
+
+  <script src="/app.js"></script>
+</body>
+</html>
