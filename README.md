@@ -110,19 +110,6 @@ python3 app.py --scan-interval 2
 - If you bind `--host 0.0.0.0`, anyone on your network may be able to access the UI. Prefer `127.0.0.1`.
 - Index files are local SQLite databases; this repo’s `.gitignore` excludes them.
 
-## Related projects (similar idea)
-
-If you need more features (export, nicer UI, desktop app), these are worth checking out:
-
-- Agent Session Viewer (PyPI): https://pypi.org/project/agent-session-viewer/
-- Agent Sessions (macOS app): https://github.com/jazzyalex/agent-sessions
-- Contextify (macOS app): https://apps.apple.com/us/app/contextify/id6740947877
-- Codexia (GUI for Codex/Claude): https://github.com/Fleqpe/Codexia
-
-## Publishing
-
-See `PUBLISHING.md` for a ready-to-use GitHub checklist + announcement copy.
-
 ## License
 
 MIT (see `LICENSE`).
