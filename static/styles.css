@@ -143,6 +143,13 @@ body {
   color: var(--muted);
 }
 
+.label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
 .row {
   display: flex;
   gap: 10px;
@@ -184,9 +191,48 @@ input[type="date"] {
 
 .roles {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 6px;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 8px;
   font-size: 13px;
+}
+
+.role-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
+}
+
+.role-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.role-toggle span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.role-controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.role-position {
+  min-width: 38px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.role-nav {
+  width: 32px;
+  padding-inline: 0;
 }
 
 .results {
@@ -355,6 +401,12 @@ body.is-resizing {
   padding: 12px;
   background: var(--panel);
   border: 1px solid var(--border);
+  cursor: pointer;
+}
+
+.msg.selected {
+  border-color: rgba(37, 99, 235, 0.5);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
 }
 
 .msg.user {
@@ -404,6 +456,7 @@ body.is-resizing {
   display: flex;
   gap: 8px;
   align-items: center;
+  flex-wrap: wrap;
 }
 
 .session-search input {

@@ -41,6 +41,13 @@ Run:
 python3 app.py
 ```
 
+or install and use the global CLI:
+
+```bash
+CCHV install
+CCHV serve
+```
+
 Open:
 
 - http://127.0.0.1:8787
@@ -50,7 +57,7 @@ By default it reads:
 - Codex logs: `~/.codex/sessions`
 - Claude logs: `~/.claude/projects`
 
-Indexes (SQLite) are stored next to `app.py` (the repo folder) unless you set `--data-dir`.
+Indexes (SQLite) are stored by default in `~/.cache/cchv` (or `$XDG_CACHE_HOME/cchv`) unless you set `--data-dir`.
 
 ## Configuration
 
@@ -58,6 +65,15 @@ Show all options:
 
 ```bash
 python3 app.py --help
+```
+
+`CCHV` subcommands:
+
+```bash
+CCHV --help
+CCHV serve --help
+CCHV demo --help
+CCHV install
 ```
 
 ## Demo data (included)
@@ -68,7 +84,7 @@ This repo includes a small set of **synthetic** Codex/Claude logs under `demo/` 
 python3 app.py \
   --codex-dir ./demo/codex \
   --claude-dir ./demo/claude \
-  --data-dir ./demo/.data
+  --data-dir ~/.cache/cchv/demo
 ```
 
 Common examples:
@@ -77,8 +93,17 @@ Common examples:
 # Store indexes outside the repo (recommended)
 python3 app.py --data-dir ~/.cache/cchv
 
+# Same thing via the bundled CLI
+CCHV serve --data-dir ~/.cache/cchv
+
 # Bind to LAN (be careful: your logs may contain secrets)
 python3 app.py --host 0.0.0.0 --port 8787
+
+# Launch with bundled synthetic logs
+CCHV demo
+
+# Install CCHV into ~/.local/bin so it works globally
+CCHV install
 
 # Custom log locations (these are the *base dirs* that contain `sessions/` and `projects/`)
 python3 app.py --codex-dir ~/.codex --claude-dir ~/.claude
@@ -97,9 +122,10 @@ python3 app.py --scan-interval 2
   - `Start time` (default)
   - `Last activity`
 - **Roles**: toggle user/assistant/system/developer/tool/other.
+- **Role jump**: click a message on the right, then use each role row’s `▲/▼` buttons to jump across that role. The `n/m` counter shows the selected message’s position within that role.
 - **Search**
-  - Left panel: keyword search across sessions + optional date range.
-  - Right panel: search within the opened session (highlight + ▲/▼ navigation).
+  - Left panel: keyword search across sessions + optional date range, with a keyword clear button.
+  - Right panel: search within the opened session (highlight + ▲/▼ navigation). The summary uses `n/m` format.
 - **Error highlighting**
   - User interruptions (e.g. `turn_aborted`) are highlighted.
   - Common tool failures (HTTP 4xx/5xx, Traceback/Exception, `Status: error`, etc.) are highlighted.
@@ -109,6 +135,19 @@ python3 app.py --scan-interval 2
 - Your local transcripts may contain sensitive info (API keys, file paths, proprietary code).
 - If you bind `--host 0.0.0.0`, anyone on your network may be able to access the UI. Prefer `127.0.0.1`.
 - Index files are local SQLite databases; this repo’s `.gitignore` excludes them.
+
+## Related projects (similar idea)
+
+If you need more features (export, nicer UI, desktop app), these are worth checking out:
+
+- Agent Session Viewer (PyPI): https://pypi.org/project/agent-session-viewer/
+- Agent Sessions (macOS app): https://github.com/jazzyalex/agent-sessions
+- Contextify (macOS app): https://apps.apple.com/us/app/contextify/id6740947877
+- Codexia (GUI for Codex/Claude): https://github.com/Fleqpe/Codexia
+
+## Publishing
+
+See `PUBLISHING.md` for a ready-to-use GitHub checklist + announcement copy.
 
 ## License
 

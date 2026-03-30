@@ -29,7 +29,10 @@
         </div>
 
         <form id="searchForm" class="card">
-          <label class="label" for="q">Keyword</label>
+          <div class="label-row">
+            <label class="label" for="q">Keyword</label>
+            <button type="button" id="clearKeyword" class="btn small">Clear</button>
+          </div>
           <input id="q" type="text" placeholder="Search keyword" />
 
           <div class="row">
@@ -47,12 +50,54 @@
         <div class="card">
           <div class="label">Roles</div>
           <div class="roles">
-            <label><input type="checkbox" data-role="user" checked /> user</label>
-            <label><input type="checkbox" data-role="assistant" checked /> assistant</label>
-            <label><input type="checkbox" data-role="system" checked /> system</label>
-            <label><input type="checkbox" data-role="developer" checked /> developer</label>
-            <label><input type="checkbox" data-role="tool" checked /> tool</label>
-            <label><input type="checkbox" data-role="other" checked /> other</label>
+            <div class="role-item">
+              <label class="role-toggle"><input type="checkbox" data-role="user" checked /> <span>user</span></label>
+              <div class="role-controls">
+                <span class="role-position muted" data-role-position="user">0/0</span>
+                <button type="button" class="btn small role-nav" data-role="user" data-direction="-1" aria-label="Previous user message">▲</button>
+                <button type="button" class="btn small role-nav" data-role="user" data-direction="1" aria-label="Next user message">▼</button>
+              </div>
+            </div>
+            <div class="role-item">
+              <label class="role-toggle"><input type="checkbox" data-role="assistant" checked /> <span>assistant</span></label>
+              <div class="role-controls">
+                <span class="role-position muted" data-role-position="assistant">0/0</span>
+                <button type="button" class="btn small role-nav" data-role="assistant" data-direction="-1" aria-label="Previous assistant message">▲</button>
+                <button type="button" class="btn small role-nav" data-role="assistant" data-direction="1" aria-label="Next assistant message">▼</button>
+              </div>
+            </div>
+            <div class="role-item">
+              <label class="role-toggle"><input type="checkbox" data-role="system" checked /> <span>system</span></label>
+              <div class="role-controls">
+                <span class="role-position muted" data-role-position="system">0/0</span>
+                <button type="button" class="btn small role-nav" data-role="system" data-direction="-1" aria-label="Previous system message">▲</button>
+                <button type="button" class="btn small role-nav" data-role="system" data-direction="1" aria-label="Next system message">▼</button>
+              </div>
+            </div>
+            <div class="role-item">
+              <label class="role-toggle"><input type="checkbox" data-role="developer" checked /> <span>developer</span></label>
+              <div class="role-controls">
+                <span class="role-position muted" data-role-position="developer">0/0</span>
+                <button type="button" class="btn small role-nav" data-role="developer" data-direction="-1" aria-label="Previous developer message">▲</button>
+                <button type="button" class="btn small role-nav" data-role="developer" data-direction="1" aria-label="Next developer message">▼</button>
+              </div>
+            </div>
+            <div class="role-item">
+              <label class="role-toggle"><input type="checkbox" data-role="tool" checked /> <span>tool</span></label>
+              <div class="role-controls">
+                <span class="role-position muted" data-role-position="tool">0/0</span>
+                <button type="button" class="btn small role-nav" data-role="tool" data-direction="-1" aria-label="Previous tool message">▲</button>
+                <button type="button" class="btn small role-nav" data-role="tool" data-direction="1" aria-label="Next tool message">▼</button>
+              </div>
+            </div>
+            <div class="role-item">
+              <label class="role-toggle"><input type="checkbox" data-role="other" checked /> <span>other</span></label>
+              <div class="role-controls">
+                <span class="role-position muted" data-role-position="other">0/0</span>
+                <button type="button" class="btn small role-nav" data-role="other" data-direction="-1" aria-label="Previous other message">▲</button>
+                <button type="button" class="btn small role-nav" data-role="other" data-direction="1" aria-label="Next other message">▼</button>
+              </div>
+            </div>
           </div>
         </div>
 

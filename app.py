@@ -6,6 +6,7 @@ import re
 import sqlite3
 import threading
 import time
+import shutil
 from datetime import datetime, timezone, time as dt_time
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -13,6 +14,48 @@ from urllib.parse import urlparse, parse_qs, unquote
 
 MAX_SEARCH_CHARS = 2_000_000
 DEFAULT_LIMIT = 200
+DEFAULT_CODEX_DIR = os.path.expanduser("~/.codex")
+DEFAULT_CLAUDE_DIR = os.path.expanduser("~/.claude")
+DEFAULT_HOST = "127.0.0.1"
+DEFAULT_PORT = 8787
+DEFAULT_SCAN_INTERVAL = 5
+
+
+def get_default_data_dir():
+    xdg_cache_home = os.environ.get("XDG_CACHE_HOME", "").strip()
+    if xdg_cache_home:
+        return str(Path(xdg_cache_home).expanduser() / "cchv")
+    return str(Path.home() / ".cache" / "cchv")
+
+
+DEFAULT_DATA_DIR = get_default_data_dir()
+
+
+def migrate_legacy_indexes(target_dir: Path):
+    legacy_dir = Path(__file__).resolve().parent
+    if target_dir == legacy_dir:
+        return
+
+    patterns = [
+        "index.sqlite",
+        "index.sqlite-shm",
+        "index.sqlite-wal",
+        "index_claude.sqlite",
+        "index_claude.sqlite-shm",
+        "index_claude.sqlite-wal",
+    ]
+
+    moved = []
+    for name in patterns:
+        src = legacy_dir / name
+        dst = target_dir / name
+        if not src.exists() or dst.exists():
+            continue
+        shutil.move(str(src), str(dst))
+        moved.append((src, dst))
+
+    if moved:
+        print(f"Migrated indexes to {target_dir}")
 
 
 def parse_ts(value):
@@ -911,6 +954,12 @@ class Handler(SimpleHTTPRequestHandler):
         self._claude_indexer = claude_indexer
         super().__init__(*args, directory=directory, **kwargs)
 
+    def end_headers(self):
+        self.send_header("Cache-Control", "no-store, max-age=0")
+        self.send_header("Pragma", "no-cache")
+        self.send_header("Expires", "0")
+        super().end_headers()
+
     def do_GET(self):
         parsed = urlparse(self.path)
         path = parsed.path
@@ -982,26 +1031,20 @@ class Handler(SimpleHTTPRequestHandler):
         self.wfile.write(data)
 
 
-def main():
-    parser = argparse.ArgumentParser(description="Codex + Claude Code history viewer")
-    parser.add_argument("--codex-dir", default=os.path.expanduser("~/.codex"))
-    parser.add_argument("--claude-dir", default=os.path.expanduser("~/.claude"))
-    parser.add_argument("--data-dir", default=None, help="Directory for index.sqlite")
-    parser.add_argument("--host", default="127.0.0.1")
-    parser.add_argument("--port", type=int, default=8787)
-    parser.add_argument("--scan-interval", type=int, default=5)
-    args = parser.parse_args()
-
-    codex_dir = Path(args.codex_dir).expanduser()
-    claude_dir = Path(args.claude_dir).expanduser()
-    data_dir = Path(args.data_dir).expanduser() if args.data_dir else Path(__file__).resolve().parent
+def run_viewer(*, codex_dir=DEFAULT_CODEX_DIR, claude_dir=DEFAULT_CLAUDE_DIR, data_dir=None,
+               host=DEFAULT_HOST, port=DEFAULT_PORT, scan_interval=DEFAULT_SCAN_INTERVAL):
+    codex_dir = Path(codex_dir).expanduser()
+    claude_dir = Path(claude_dir).expanduser()
+    data_dir = Path(data_dir).expanduser() if data_dir else Path(DEFAULT_DATA_DIR).expanduser()
     data_dir.mkdir(parents=True, exist_ok=True)
+    if data_dir == Path(DEFAULT_DATA_DIR).expanduser():
+        migrate_legacy_indexes(data_dir)
 
     codex_indexer = Indexer(
         sessions_dir=codex_dir / "sessions",
         data_dir=data_dir,
         db_filename="index.sqlite",
-        scan_interval=args.scan_interval,
+        scan_interval=scan_interval,
         parse_file_fn=parse_codex_session_file,
         parser_version=4,
     )
@@ -1011,7 +1054,7 @@ def main():
         sessions_dir=claude_dir / "projects",
         data_dir=data_dir,
         db_filename="index_claude.sqlite",
-        scan_interval=args.scan_interval,
+        scan_interval=scan_interval,
         parse_file_fn=parse_claude_session_file,
         file_filter_fn=lambda p: not p.name.startswith("agent-"),
         parser_version=3,
@@ -1029,8 +1072,8 @@ def main():
             **inner_kwargs,
         )
 
-    server = ThreadingHTTPServer((args.host, args.port), handler)
-    print(f"History viewer running on http://{args.host}:{args.port}")
+    server = ThreadingHTTPServer((host, port), handler)
+    print(f"History viewer running on http://{host}:{port}")
     print(f"Codex logs:  {codex_dir}")
     print(f"Claude logs: {claude_dir}")
     print(f"Codex index:  {codex_indexer.db_path}")
@@ -1039,6 +1082,25 @@ def main():
         server.serve_forever()
     except KeyboardInterrupt:
         pass
+
+
+def main(argv=None):
+    parser = argparse.ArgumentParser(description="Codex + Claude Code history viewer")
+    parser.add_argument("--codex-dir", default=DEFAULT_CODEX_DIR)
+    parser.add_argument("--claude-dir", default=DEFAULT_CLAUDE_DIR)
+    parser.add_argument("--data-dir", default=None, help=f"Directory for index.sqlite (default: {DEFAULT_DATA_DIR})")
+    parser.add_argument("--host", default=DEFAULT_HOST)
+    parser.add_argument("--port", type=int, default=DEFAULT_PORT)
+    parser.add_argument("--scan-interval", type=int, default=DEFAULT_SCAN_INTERVAL)
+    args = parser.parse_args(argv)
+    run_viewer(
+        codex_dir=args.codex_dir,
+        claude_dir=args.claude_dir,
+        data_dir=args.data_dir,
+        host=args.host,
+        port=args.port,
+        scan_interval=args.scan_interval,
+    )
 
 
 if __name__ == "__main__":

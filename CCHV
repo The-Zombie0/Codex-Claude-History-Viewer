@@ -1,0 +1,91 @@
+#!/usr/bin/env python3
+import argparse
+import sys
+from pathlib import Path
+
+from app import (
+    DEFAULT_CLAUDE_DIR,
+    DEFAULT_CODEX_DIR,
+    DEFAULT_DATA_DIR,
+    DEFAULT_HOST,
+    DEFAULT_PORT,
+    DEFAULT_SCAN_INTERVAL,
+    run_viewer,
+)
+
+
+def add_server_args(parser):
+    parser.add_argument("--codex-dir", default=DEFAULT_CODEX_DIR, help="Base Codex dir containing sessions/")
+    parser.add_argument("--claude-dir", default=DEFAULT_CLAUDE_DIR, help="Base Claude dir containing projects/")
+    parser.add_argument("--data-dir", default=None, help="Directory for SQLite indexes")
+    parser.add_argument("--host", default=DEFAULT_HOST)
+    parser.add_argument("--port", type=int, default=DEFAULT_PORT)
+    parser.add_argument("--scan-interval", type=int, default=DEFAULT_SCAN_INTERVAL)
+
+
+def build_parser():
+    parser = argparse.ArgumentParser(prog="CCHV", description="Codex + Claude Code history viewer")
+    subparsers = parser.add_subparsers(dest="command")
+
+    serve_parser = subparsers.add_parser("serve", help="Run the viewer with your local Codex/Claude logs")
+    add_server_args(serve_parser)
+
+    demo_parser = subparsers.add_parser("demo", help="Run the viewer with the bundled demo logs")
+    demo_parser.add_argument("--demo-dir", default=str(Path(__file__).resolve().parent / "demo"), help="Directory containing demo/codex and demo/claude")
+    demo_parser.add_argument("--data-dir", default=None, help="Directory for SQLite indexes (defaults to <demo-dir>/.data)")
+    demo_parser.add_argument("--host", default=DEFAULT_HOST)
+    demo_parser.add_argument("--port", type=int, default=DEFAULT_PORT)
+    demo_parser.add_argument("--scan-interval", type=int, default=DEFAULT_SCAN_INTERVAL)
+
+    install_parser = subparsers.add_parser("install", help="Install CCHV into ~/.local/bin")
+    install_parser.add_argument("--bin-dir", default=str(Path.home() / ".local" / "bin"), help="Directory to place the launcher in")
+
+    return parser
+
+
+def main(argv=None):
+    parser = build_parser()
+    args_list = list(sys.argv[1:] if argv is None else argv)
+    if not args_list:
+        args_list = ["serve"]
+    elif args_list[0].startswith("-") and args_list[0] not in {"-h", "--help"}:
+        args_list = ["serve", *args_list]
+
+    args = parser.parse_args(args_list)
+
+    if args.command == "demo":
+        demo_dir = Path(args.demo_dir).expanduser()
+        data_dir = args.data_dir or (Path(DEFAULT_DATA_DIR).expanduser() / "demo")
+        run_viewer(
+            codex_dir=demo_dir / "codex",
+            claude_dir=demo_dir / "claude",
+            data_dir=data_dir,
+            host=args.host,
+            port=args.port,
+            scan_interval=args.scan_interval,
+        )
+        return
+
+    if args.command == "install":
+        bin_dir = Path(args.bin_dir).expanduser()
+        bin_dir.mkdir(parents=True, exist_ok=True)
+        target = bin_dir / "CCHV"
+        source = Path(__file__).resolve()
+        if target.exists() or target.is_symlink():
+            target.unlink()
+        target.symlink_to(source)
+        print(f"Installed CCHV to {target}")
+        return
+
+    run_viewer(
+        codex_dir=args.codex_dir,
+        claude_dir=args.claude_dir,
+        data_dir=args.data_dir,
+        host=args.host,
+        port=args.port,
+        scan_interval=args.scan_interval,
+    )
+
+
+if __name__ == "__main__":
+    main()

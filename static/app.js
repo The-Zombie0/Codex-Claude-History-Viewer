@@ -7,6 +7,7 @@ const sessionSortWrapEl = document.getElementById("sessionSortWrap");
 const sessionSortEl = document.getElementById("sessionSort");
 const searchForm = document.getElementById("searchForm");
 const keywordInput = document.getElementById("q");
+const clearKeywordBtn = document.getElementById("clearKeyword");
 const startInput = document.getElementById("start");
 const endInput = document.getElementById("end");
 const sessionSearchInput = document.getElementById("sessionSearch");
@@ -29,6 +30,8 @@ const sidebarResizerEl = document.getElementById("sidebarResizer");
 const headerResizerEl = document.getElementById("headerResizer");
 const mainEl = document.getElementById("main");
 const codeThemeButtons = document.querySelectorAll("[data-code-theme]");
+const rolePositionEls = document.querySelectorAll("[data-role-position]");
+const roleNavButtons = document.querySelectorAll(".role-nav");
 
 let currentSession = null;
 let currentMessages = [];
@@ -36,6 +39,7 @@ let currentSource = "codex"; // "codex" | "claude"
 let browseMode = "sessions"; // "sessions" | "projects"
 let currentProject = null; // string (cwd)
 let currentMarks = [];
+let currentRenderedMessages = [];
 let activeMarkIndex = -1;
 let lastSessionTerm = "";
 let listReloadTimer = null;
@@ -44,6 +48,7 @@ let projectsFetchSeq = 0;
 let sessionFetchSeq = 0;
 let currentCodeTheme = "light";
 let currentSessionSort = "start"; // "start" | "last"
+let selectedMessageIndex = -1;
 
 const UI_STORAGE_KEYS = {
   roleFilters: "historyViewer.ui.roleFilters",
@@ -65,6 +70,10 @@ const LAYOUT_LIMITS = {
   minHeaderHeightPx: 140,
   minMessagesHeightPx: 220,
 };
+
+const rolePositionMap = new Map(
+  Array.from(rolePositionEls, (el) => [el.dataset.rolePosition, el]),
+);
 
 function apiBase() {
   return currentSource === "claude" ? "/api/claude" : "/api";
@@ -98,6 +107,97 @@ function roleToClass(role) {
   if (role === "developer") return "developer";
   if (role === "tool") return "tool";
   return "other";
+}
+
+function getVisibleRoleMessageIndexes(roleClass) {
+  return currentRenderedMessages
+    .filter((entry) => entry.roleClass === roleClass)
+    .map((entry) => entry.index);
+}
+
+function updateSelectedMessageUi() {
+  currentRenderedMessages.forEach((entry) => {
+    entry.element.classList.toggle("selected", entry.index === selectedMessageIndex);
+  });
+}
+
+function getSelectedRolePosition(roleClass) {
+  const indexes = getVisibleRoleMessageIndexes(roleClass);
+  const index = indexes.indexOf(selectedMessageIndex);
+  return {
+    position: index >= 0 ? index + 1 : 0,
+    total: indexes.length,
+  };
+}
+
+function findRoleNavigationTarget(roleClass, delta) {
+  const indexes = getVisibleRoleMessageIndexes(roleClass);
+  if (!indexes.length) return null;
+
+  if (selectedMessageIndex === -1) {
+    return delta > 0 ? indexes[0] : indexes[indexes.length - 1];
+  }
+
+  const exactIndex = indexes.indexOf(selectedMessageIndex);
+  if (exactIndex >= 0) {
+    const nextIndex = exactIndex + delta;
+    if (nextIndex < 0 || nextIndex >= indexes.length) {
+      return null;
+    }
+    return indexes[nextIndex];
+  }
+
+  if (delta > 0) {
+    return indexes.find((index) => index > selectedMessageIndex) ?? null;
+  }
+
+  for (let i = indexes.length - 1; i >= 0; i -= 1) {
+    if (indexes[i] < selectedMessageIndex) {
+      return indexes[i];
+    }
+  }
+  return null;
+}
+
+function updateRoleNavigationState() {
+  const roleInputs = document.querySelectorAll(".roles input[type=checkbox]");
+  roleInputs.forEach((input) => {
+    const role = input.dataset.role;
+    if (!role) return;
+
+    const positionEl = rolePositionMap.get(role);
+    const { position, total } = getSelectedRolePosition(role);
+    if (positionEl) {
+      positionEl.textContent = `${position}/${total}`;
+    }
+
+    const buttons = document.querySelectorAll(`.role-nav[data-role="${role}"]`);
+    buttons.forEach((button) => {
+      const direction = Number.parseInt(button.dataset.direction || "0", 10);
+      const target = findRoleNavigationTarget(role, direction);
+      button.disabled = !input.checked || target === null;
+    });
+  });
+}
+
+function setSelectedMessageIndex(messageIndex, { scroll = true } = {}) {
+  const target = currentRenderedMessages.find((entry) => entry.index === messageIndex);
+  if (!target) return false;
+
+  selectedMessageIndex = messageIndex;
+  updateSelectedMessageUi();
+  updateRoleNavigationState();
+
+  if (scroll) {
+    target.element.scrollIntoView({ behavior: "smooth", block: "center" });
+  }
+  return true;
+}
+
+function gotoRoleMessage(roleClass, delta) {
+  const target = findRoleNavigationTarget(roleClass, delta);
+  if (target === null) return;
+  setSelectedMessageIndex(target, { scroll: true });
 }
 
 function kindLabel(kind) {
@@ -815,13 +915,13 @@ function renderMessages(messages) {
   messagesEl.innerHTML = "";
   const roleFilters = getRoleFilters();
   const term = sessionSearchInput.value.trim();
-  let matchCount = 0;
   let messageMatchCount = 0;
   let renderedCount = 0;
   currentMarks = [];
+  currentRenderedMessages = [];
   activeMarkIndex = -1;
 
-  messages.forEach((msg) => {
+  messages.forEach((msg, index) => {
     const roleClass = roleToClass(msg.role);
     if (!roleFilters[roleClass]) {
       return;
@@ -830,6 +930,8 @@ function renderMessages(messages) {
 
     const wrapper = document.createElement("div");
     wrapper.className = `msg ${roleClass}`;
+    wrapper.dataset.messageIndex = String(index);
+    wrapper.dataset.role = roleClass;
     if (msg.kind === "agent_reasoning" || msg.kind === "reasoning_summary") {
       wrapper.classList.add("thinking");
     }
@@ -869,15 +971,20 @@ function renderMessages(messages) {
     wrapper.appendChild(header);
     wrapper.appendChild(body);
     messagesEl.appendChild(wrapper);
+    currentRenderedMessages.push({ index, roleClass, element: wrapper });
 
     if (term) {
       const hits = highlightElement(body, term);
       if (hits > 0) {
         messageMatchCount += 1;
-        matchCount += hits;
       }
     }
   });
+
+  if (!currentRenderedMessages.some((entry) => entry.index === selectedMessageIndex)) {
+    selectedMessageIndex = -1;
+  }
+  updateSelectedMessageUi();
 
   if (renderedCount === 0) {
     const empty = document.createElement("div");
@@ -890,12 +997,13 @@ function renderMessages(messages) {
 
   if (term) {
     currentMarks = Array.from(messagesEl.querySelectorAll("mark"));
-    sessionSearchCount.textContent = `${matchCount} matches in ${messageMatchCount} messages`;
+    sessionSearchCount.textContent = `${messageMatchCount}/${messages.length}`;
   } else {
-    sessionSearchCount.textContent = "";
+    sessionSearchCount.textContent = `${renderedCount}/${messages.length}`;
   }
 
   updateMatchNavState(term);
+  updateRoleNavigationState();
 }
 
 function updateMatchNavState(term) {
@@ -930,6 +1038,13 @@ function setActiveMarkIndex(index, { scroll }) {
   activeMarkIndex = wrapped;
   const el = currentMarks[activeMarkIndex];
   el.classList.add("active");
+  const messageEl = el.closest(".msg[data-message-index]");
+  if (messageEl) {
+    const messageIndex = Number.parseInt(messageEl.dataset.messageIndex || "", 10);
+    if (Number.isFinite(messageIndex)) {
+      setSelectedMessageIndex(messageIndex, { scroll: false });
+    }
+  }
   if (scroll) {
     el.scrollIntoView({ behavior: "smooth", block: "center" });
   }
@@ -963,8 +1078,8 @@ function renderSessionHeader(session) {
   let resumeCmd = "-";
   if (currentSource === "codex") {
     resumeCmd = session.cwd
-      ? `cd \"${session.cwd}\" && codex --resume ${resumeId}`
-      : `codex --resume ${resumeId}`;
+      ? `cd \"${session.cwd}\" && codex resume ${resumeId}`
+      : `codex resume ${resumeId}`;
   } else if (currentSource === "claude") {
     resumeCmd = session.cwd
       ? `cd \"${session.cwd}\" && claude -r ${resumeId}`
@@ -1044,6 +1159,13 @@ async function fetchSessions() {
 
 async function fetchSession(sessionId) {
   const seq = (sessionFetchSeq += 1);
+  currentRenderedMessages = [];
+  currentMarks = [];
+  activeMarkIndex = -1;
+  selectedMessageIndex = -1;
+  sessionSearchCount.textContent = "0/0";
+  updateRoleNavigationState();
+  updateMatchNavState("");
   renderStatusMessage("Loading…");
   try {
     const res = await fetch(`${apiBase()}/session/${encodeURIComponent(sessionId)}`);
@@ -1136,6 +1258,15 @@ sessionListEl.addEventListener("click", (event) => {
   fetchSession(sessionId);
 });
 
+messagesEl.addEventListener("click", (event) => {
+  const target = event.target instanceof Element ? event.target : event.target?.parentElement;
+  const messageEl = target ? target.closest(".msg[data-message-index]") : null;
+  if (!messageEl) return;
+  const messageIndex = Number.parseInt(messageEl.dataset.messageIndex || "", 10);
+  if (!Number.isFinite(messageIndex)) return;
+  setSelectedMessageIndex(messageIndex, { scroll: false });
+});
+
 searchForm.addEventListener("submit", (event) => {
   event.preventDefault();
   reloadList();
@@ -1144,6 +1275,15 @@ searchForm.addEventListener("submit", (event) => {
 keywordInput.addEventListener("input", () => {
   scheduleReloadList();
 });
+
+if (clearKeywordBtn) {
+  clearKeywordBtn.addEventListener("click", () => {
+    if (!keywordInput.value) return;
+    keywordInput.value = "";
+    keywordInput.focus();
+    reloadList();
+  });
+}
 
 startInput.addEventListener("input", () => {
   scheduleReloadList();
@@ -1204,6 +1344,7 @@ codeThemeButtons.forEach((btn) => {
 });
 applyStoredCodeTheme();
 applyStoredSessionSort();
+sessionSearchCount.textContent = "0/0";
 
 if (sessionSortEl) {
   sessionSortEl.addEventListener("change", () => {
@@ -1221,6 +1362,16 @@ roleInputs.forEach((input) => {
   });
 });
 
+roleNavButtons.forEach((button) => {
+  button.addEventListener("click", () => {
+    const role = button.dataset.role;
+    const direction = Number.parseInt(button.dataset.direction || "0", 10);
+    if (!role || !Number.isFinite(direction)) return;
+    gotoRoleMessage(role, direction);
+  });
+});
+updateRoleNavigationState();
+
 document.querySelectorAll("[data-source]").forEach((btn) => {
   btn.addEventListener("click", () => {
     const source = btn.dataset.source;
@@ -1229,13 +1380,20 @@ document.querySelectorAll("[data-source]").forEach((btn) => {
     currentProject = null;
     currentSession = null;
     currentMessages = [];
+    currentRenderedMessages = [];
+    currentMarks = [];
+    activeMarkIndex = -1;
+    selectedMessageIndex = -1;
     sessionSearchInput.value = "";
+    sessionSearchCount.textContent = "0/0";
     sessionHeaderEl.querySelector(".session-title").textContent = "Select a session";
     sessionHeaderEl.querySelector(".session-meta").textContent = "";
     workdirValueEl.textContent = "-";
     resumeValueEl.textContent = "-";
     resumeCmdEl.textContent = "-";
     messagesEl.innerHTML = "";
+    updateRoleNavigationState();
+    updateMatchNavState("");
 
     document.querySelectorAll("[data-source]").forEach((b) => {
       const active = b.dataset.source === currentSource;
